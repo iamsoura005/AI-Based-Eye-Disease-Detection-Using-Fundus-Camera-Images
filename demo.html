@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Eye Disease Detection Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f8f9fa;
+            padding: 2rem;
+        }
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .upload-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .dropzone {
+            border: 2px dashed #007bff;
+            border-radius: 5px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .dropzone:hover {
+            border-color: #0056b3;
+            background-color: #f8f9fa;
+        }
+        .preview-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .results-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+        }
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1>AI Eye Disease Detection</h1>
+            <p class="lead">Upload a fundus camera image to detect eye diseases using AI</p>
+        </header>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="upload-container">
+                        <h3 class="mb-3">Upload Fundus Image</h3>
+                        
+                        <div class="dropzone" id="dropzone">
+                            <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" style="display: none;">
+                            <div>
+                                <p>Drag and drop a fundus image here, or click to select a file</p>
+                                <p class="text-muted">Supported formats: JPEG, PNG (Max: 5MB)</p>
+                            </div>
+                        </div>
+                        
+                        <div class="preview-container" id="previewContainer" style="display: none;">
+                            <img id="previewImage" class="preview-image mb-3" alt="Preview">
+                            <div>
+                                <button class="btn btn-outline-secondary mt-2" id="resetButton">
+                                    Upload Different Image
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <button class="btn btn-primary btn-lg" id="analyzeButton" disabled>
+                                Analyze Image
+                            </button>
+                            <button class="btn btn-outline-primary" id="gradcamButton" disabled>
+                                Generate Visualization
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="results-container" id="resultsContainer" style="display: none;">
+                        <h3 class="mb-3">Prediction Results</h3>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Detected Condition</h5>
+                                <h6 class="card-subtitle mb-3 text-muted" id="processingTime"></h6>
+                                
+                                <div class="mt-4 mb-3">
+                                    <h4 class="text-primary" id="predictionResult"></h4>
+                                    <p id="confidenceText"></p>
+                                    <div class="progress">
+                                        <div id="confidenceBar" class="progress-bar bg-success" role="progressbar"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <h5>What does this mean?</h5>
+                                    <p>
+                                        This AI model has analyzed your fundus image and detected the condition 
+                                        shown above. Please consult with a healthcare professional for proper 
+                                        diagnosis and treatment options.
+                                    </p>
+                                    <p class="text-muted small">
+                                        <strong>Note:</strong> This is an AI-assisted detection tool and should not 
+                                        replace professional medical advice.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="results-container mt-4" id="gradcamContainer" style="display: none;">
+                        <h3 class="mb-3">Visualization</h3>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Model Attention Map</h5>
+                                <h6 class="card-subtitle mb-3 text-muted">
+                                    Showing areas the model focused on to make its prediction
+                                </h6>
+                                
+                                <div class="text-center">
+                                    <img id="gradcamImage" class="img-fluid rounded" alt="Grad-CAM Visualization">
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <h5>Interpretation</h5>
+                                    <p>
+                                        The heatmap overlay shows which regions of the image were most important 
+                                        for the model's prediction.
+                                    </p>
+                                    <p>
+                                        Red areas indicate regions that strongly influenced the prediction, 
+                                        while blue areas had less impact on the decision.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p>AI-Based Eye Disease Detection Using Fundus Camera Images</p>
+            <p class="small">This is a demo application for educational purposes only.</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('fileInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewImage = document.getElementById('previewImage');
+            const resetButton = document.getElementById('resetButton');
+            const analyzeButton = document.getElementById('analyzeButton');
+            const gradcamButton = document.getElementById('gradcamButton');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const gradcamContainer = document.getElementById('gradcamContainer');
+            const predictionResult = document.getElementById('predictionResult');
+            const confidenceText = document.getElementById('confidenceText');
+            const confidenceBar = document.getElementById('confidenceBar');
+            const processingTime = document.getElementById('processingTime');
+            const gradcamImage = document.getElementById('gradcamImage');
+            
+            let selectedFile = null;
+            
+            // Mock disease labels
+            const diseaseLabels = [
+                "Normal",
+                "Diabetic Retinopathy - Mild",
+                "Diabetic Retinopathy - Moderate",
+                "Diabetic Retinopathy - Severe",
+                "Glaucoma",
+                "Age-related Macular Degeneration"
+            ];
+            
+            // Setup dropzone
+            dropzone.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.style.borderColor = '#0056b3';
+                dropzone.style.backgroundColor = '#f8f9fa';
+            });
+            
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.style.borderColor = '#007bff';
+                dropzone.style.backgroundColor = '';
+            });
+            
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.style.borderColor = '#007bff';
+                dropzone.style.backgroundColor = '';
+                
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    handleFile(fileInput.files[0]);
+                }
+            });
+            
+            resetButton.addEventListener('click', resetUpload);
+            
+            analyzeButton.addEventListener('click', analyzeImage);
+            
+            gradcamButton.addEventListener('click', generateGradCAM);
+            
+            function handleFile(file) {
+                // Validate file type
+                if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                    alert('Please upload a valid image file (JPEG or PNG)');
+                    return;
+                }
+                
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size exceeds 5MB limit');
+                    return;
+                }
+                
+                selectedFile = file;
+                
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = () => {
+                    previewImage.src = reader.result;
+                    dropzone.style.display = 'none';
+                    previewContainer.style.display = 'block';
+                    analyzeButton.disabled = false;
+                    gradcamButton.disabled = false;
+                    
+                    // Hide results if new image is uploaded
+                    resultsContainer.style.display = 'none';
+                    gradcamContainer.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            function resetUpload() {
+                selectedFile = null;
+                fileInput.value = '';
+                previewContainer.style.display = 'none';
+                dropzone.style.display = 'block';
+                analyzeButton.disabled = true;
+                gradcamButton.disabled = true;
+                resultsContainer.style.display = 'none';
+                gradcamContainer.style.display = 'none';
+            }
+            
+            function analyzeImage() {
+                if (!selectedFile) {
+                    alert('Please upload an image first');
+                    return;
+                }
+                
+                // Show loading state
+                analyzeButton.disabled = true;
+                analyzeButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Analyzing...';
+                
+                // Simulate API call with timeout
+                setTimeout(() => {
+                    // Generate random prediction
+                    const classIdx = Math.floor(Math.random() * diseaseLabels.length);
+                    const confidence = Math.random() * 0.25 + 0.7; // Random between 0.7 and 0.95
+                    const processTime = Math.random() * 200 + 50; // Random between 50ms and 250ms
+                    
+                    // Update UI with results
+                    predictionResult.textContent = diseaseLabels[classIdx];
+                    confidenceText.textContent = `Confidence: ${(confidence * 100).toFixed(2)}%`;
+                    confidenceBar.style.width = `${confidence * 100}%`;
+                    processingTime.textContent = `Processed in ${processTime.toFixed(2)}ms`;
+                    
+                    // Set confidence bar color
+                    if (confidence >= 0.8) {
+                        confidenceBar.className = 'progress-bar bg-success';
+                    } else if (confidence >= 0.5) {
+                        confidenceBar.className = 'progress-bar bg-info';
+                    } else {
+                        confidenceBar.className = 'progress-bar bg-warning';
+                    }
+                    
+                    // Show results
+                    resultsContainer.style.display = 'block';
+                    
+                    // Reset button state
+                    analyzeButton.disabled = false;
+                    analyzeButton.innerHTML = 'Analyze Image';
+                }, 1500);
+            }
+            
+            function generateGradCAM() {
+                if (!selectedFile) {
+                    alert('Please upload an image first');
+                    return;
+                }
+                
+                // Show loading state
+                gradcamButton.disabled = true;
+                gradcamButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating Visualization...';
+                
+                // Simulate API call with timeout
+                setTimeout(() => {
+                    // For demo, we'll use our local sample heatmap images
+                    const demoImages = [
+                        'static/images/sample_comparison_1.jpg',
+                        'static/images/sample_comparison_2.jpg',
+                        'static/images/sample_comparison_3.jpg'
+                    ];
+                    
+                    // Select a random demo image
+                    const randomIndex = Math.floor(Math.random() * demoImages.length);
+                    gradcamImage.src = demoImages[randomIndex];
+                    
+                    // Show results
+                    gradcamContainer.style.display = 'block';
+                    
+                    // Reset button state
+                    gradcamButton.disabled = false;
+                    gradcamButton.innerHTML = 'Generate Visualization';
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html> 
